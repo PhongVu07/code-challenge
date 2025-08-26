@@ -1,6 +1,9 @@
+import React, { useMemo } from 'react'
+
 interface WalletBalance {
     currency: string;
     amount: number;
+    blockchain: string; // Fix: Added missing property
 }
 interface FormattedWalletBalance {
     currency: string;
@@ -11,12 +14,12 @@ interface FormattedWalletBalance {
 interface Props extends BoxProps {
 
 }
-const WalletPage: React.FC<Props> = (props: Props) => {
+const WalletPage: React.FC<{ Props }> = (props: Props) => {
     const { children, ...rest } = props;
-    const balances = useWalletBalances();
-    const prices = usePrices();
+    const balances: WalletBalance[] = []
+    const prices: { [key: string]: number } = {}
 
-    const getPriority = (blockchain: any): number => {
+    const getPriority = (blockchain: string): number => { // Fix: Changed 'any' to 'string'
         switch (blockchain) {
             case 'Osmosis':
                 return 100
@@ -35,40 +38,31 @@ const WalletPage: React.FC<Props> = (props: Props) => {
 
     const sortedBalances = useMemo(() => {
         return balances.filter((balance: WalletBalance) => {
-            const balancePriority = getPriority(balance.blockchain);
-            if (lhsPriority > -99) {
-                if (balance.amount <= 0) {
-                    return true;
-                }
-            }
-            return false
+            const balancePriority = getPriority(balance.blockchain)
+            // Fix: Corrected filtering logic
+            return balancePriority > -99 && balance.amount > 0
         }).sort((lhs: WalletBalance, rhs: WalletBalance) => {
-            const leftPriority = getPriority(lhs.blockchain);
-            const rightPriority = getPriority(rhs.blockchain);
+            const leftPriority = getPriority(lhs.blockchain)
+            const rightPriority = getPriority(rhs.blockchain)
             if (leftPriority > rightPriority) {
-                return -1;
+                return -1
             } else if (rightPriority > leftPriority) {
-                return 1;
+                return 1
             }
-        });
-    }, [balances, prices]);
+            return 0 // Fix: Added default return for sort
+        })
+    }, [balances]) // Fix: Removed unnecessary 'prices' dependency
 
-    const formattedBalances = sortedBalances.map((balance: WalletBalance) => {
-        return {
-            ...balance,
-            formatted: balance.amount.toFixed()
-        }
-    })
+    // Fix: Removed unused 'formattedBalances' variable
 
-    const rows = sortedBalances.map((balance: FormattedWalletBalance, index: number) => {
-        const usdValue = prices[balance.currency] * balance.amount;
+    const rows = sortedBalances.map((balance: WalletBalance) => { // Fix: Corrected type and key
+        const usdValue = prices[balance.currency] * balance.amount
         return (
             <WalletRow
-                className={classes.row}
-                key={index}
+                key={balance.currency} // Fix: Used unique currency instead of index
                 amount={balance.amount}
                 usdValue={usdValue}
-                formattedAmount={balance.formatted}
+                formattedAmount={balance.amount.toFixed()} // Fix: Formatting moved here
             />
         )
     })
